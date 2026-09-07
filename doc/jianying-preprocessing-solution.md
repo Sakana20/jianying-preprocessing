@@ -346,6 +346,8 @@ font_path: 系统字体 -> 特黑体缓存文件
 fonts: [] -> 1 个字体资源描述
 ```
 
+其中 `line_spacing = 0.25` 对应剪映界面行间距5。当前只验证了这一个界面值与 Draft 原始值的映射，首版不应据此猜测其他行间距的换算规律。
+
 字体资源：
 
 ```text
@@ -385,6 +387,8 @@ clip.scale.y: 1.0 -> 2.5
 clip.transform.x: 0.0 -> 0.0
 clip.transform.y: -0.8 -> -0.390625
 ```
+
+在固定720×1280画布下，处理后数值对应剪映界面位置 `x=0, y=-500` 和缩放250%。其中 `-500 / 1280 = -0.390625`，`250 / 100 = 2.5`。
 
 字幕 segment 的 ID、material ID、起止时间、持续时间、render index 等均保持不变。
 
@@ -675,6 +679,11 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
   "schema_version": 1,
   "kind": "subtitle_style",
   "config_set_id": "taobao-flash-v1",
+  "canvas": {
+    "width": 720,
+    "height": 1280,
+    "policy": "require_exact"
+  },
   "font": {
     "resource_id": "6740439840254333443",
     "title": "特黑体",
@@ -684,15 +693,46 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
   "fill": "#FFFFFF",
   "stroke": "#000000",
   "stroke_width": 0.08,
-  "line_spacing_raw": 0.25,
-  "scale_x": 2.5,
-  "scale_y": 2.5,
-  "transform_x": 0.0,
-  "transform_y": -0.390625
+  "layout_ui": {
+    "position": {
+      "x": 0,
+      "y": -500,
+      "unit": "canvas_pixel"
+    },
+    "scale_percent": 250,
+    "line_spacing": 5
+  }
 }
 ```
 
-`line_spacing_raw` 明确表示 Draft JSON 原始值，避免把剪映 UI 显示值与内部值混用。
+首个配置集使用剪映界面单位作为业务真值，默认值明确为：
+
+```text
+画布：720 × 1280，必须完全一致
+位置：x = 0，y = -500
+缩放：250%
+行间距：5
+```
+
+编译到 Draft 时必须生成以下原始值：
+
+```json
+{
+  "materials.texts[].line_spacing": 0.25,
+  "segment.clip.scale.x": 2.5,
+  "segment.clip.scale.y": 2.5,
+  "segment.clip.transform.x": 0.0,
+  "segment.clip.transform.y": -0.390625
+}
+```
+
+转换契约：
+
+- `scale = scale_percent / 100`。
+- 固定画布下 `transform.x = position.x / 720`，`transform.y = position.y / 1280`。
+- 当前已验证 `line_spacing UI 5 -> Draft 0.25`；首版转换器应显式支持该映射，而不是把界面值5直接写入 Draft。
+- 画布不是720×1280时，`require_exact` 使 apply 失败，不自动缩放位置。
+- plan 必须同时输出配置界面值和将写入的 Draft 值，便于人工核对。
 
 ### 当前产品名配置
 
@@ -1224,6 +1264,7 @@ Job schema 应显式拒绝旧式内联字段。想切换产品时只改 `config_
 - 产品名、利益点无跨类别重复或未声明重叠。
 - 利益点图片仅引用同配置集内存在的 `benefit_id`，不重复存储 literal。
 - 利益点图片、风险提示与尾帧的可空状态明确，不存在半空配置或空 `items` 伪关闭。
+- 字幕样式配置声明固定720×1280画布，界面值为 `x=0`、`y=-500`、缩放250%、行间距5，并可确定性解析为已验证的 Draft 值。
 - plan/apply 前后组件 hash 未变化。
 
 ### JSON 与版本
@@ -1269,6 +1310,7 @@ Job schema 应显式拒绝旧式内联字段。想切换产品时只改 `config_
 - 预期的全部字幕 segment 命中。
 - Material/segment 数量未意外改变。
 - 字体路径存在且 resource ID 一致。
+- 字幕布局写入值为 `transform=(0.0,-0.390625)`、`scale=(2.5,2.5)`，text material 的 `line_spacing=0.25`。
 - 样式 ranges 连续、无重叠并覆盖全文。
 - 产品名和利益点命中数量符合 strict 策略。
 - 最终 ranges 的类别来源可追溯到具体配置文件、item ID 和 literal。
@@ -1320,16 +1362,16 @@ Job schema 应显式拒绝旧式内联字段。想切换产品时只改 `config_
 2. 风险提示配置非空时，必须覆盖包括新增尾帧在内的最终工程时长。
 3. 风险提示或尾帧切换为 `null` 时，必须删除此前由本 Skill 创建且可验证归属的对应对象。
 4. 利益点图片允许为 `null`；切换为 `null` 时同样删除此前由本 Skill 创建且可验证归属的对应对象。
+5. 首版画布固定为720×1280；字幕配置默认使用剪映界面位置 `x=0, y=-500`、缩放250%、行间距5。
 
 ### 仍需在实现前统一确认
 
 1. 前置 Skill 是否保证传入的是可修改的工程副本。
 2. 首版是否只支持剪映 5.9.0。
 3. 风险提示图是否始终与画布同尺寸、透明并覆盖配置指定区间。
-4. “特黑体 + 当前参数”是否作为首个配置集的固定字幕样式。
-5. 未命中的产品名/利益点应警告还是整次失败；本文当前建议 approved 配置默认失败。
-6. TCC 失败时是否允许自动打开剪映并通过原生文件选择器授权。
-7. 是否允许将媒体 clone/copy 到 Draft staging 作为无人值守兜底。
+4. 未命中的产品名/利益点应警告还是整次失败；本文当前建议 approved 配置默认失败。
+5. TCC 失败时是否允许自动打开剪映并通过原生文件选择器授权。
+6. 是否允许将媒体 clone/copy 到 Draft staging 作为无人值守兜底。
 
 ## 当前建议
 
@@ -1338,7 +1380,7 @@ Job schema 应显式拒绝旧式内联字段。想切换产品时只改 `config_
 - 当前淘宝闪购参考值成为首个 `taobao-flash-v1` 配置集，其中利益点图片和风险提示非空、尾帧为 `null`。
 - 利益点图片、风险提示和尾帧的 `null` 必须是显式且可校验的功能关闭值；缺字段、空 `items` 或资产路径为空均失败。
 - 本 Skill 默认在目标副本内事务化处理，并创建可回滚备份及托管状态。
-- 首版锁定剪映 5.9.0 / Draft 360000 / 30 fps；其他帧率只允许 inspect/plan，未验证前不得 apply。
+- 首版锁定剪映 5.9.0 / Draft 360000 / 30 fps / 720×1280画布；其他帧率或画布只允许 inspect/plan，未验证前不得 apply。
 - 先交付 schema、`validate-config`、inspect 和 plan，再开启 apply。
 - 高亮只执行批准配置中的明确 literal/alias，不进行语义猜测。
 - 利益点图片只通过已解析的 `benefit_id` 集合触发，跟随匹配字幕区间，并复现 Draft 3 中已验证的层级、变换和入场动画。
