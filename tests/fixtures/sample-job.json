@@ -1,0 +1,18 @@
+{
+  "job_schema": 1,
+  "draft_path": "/Users/sakana/Movies/JianyingPro/User Data/Projects/com.lveditor.draft/1",
+  "config_root": "/Users/sakana/Desktop/Work/Codex/jianying-preprocessing/configs",
+  "config_set": "taobao-flash-v1",
+  "media_manifest": null,
+  "search_roots": [],
+  "media_strategy": "reference-existing",
+  "permission_strategy": "diagnose-only",
+  "subtitle_track": {"name": "字幕", "on_ambiguous": "fail"},
+  "strict": {
+    "unmatched_product": true,
+    "unmatched_benefit": true,
+    "unmatched_benefit_image": true,
+    "font_missing": true,
+    "unmanaged_layer_conflict": true
+  }
+}

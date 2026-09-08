@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "kind", "items"],
+  "properties": {"schema_version": {"const": 1}, "kind": {"const": "product_names"}, "items": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["product_id", "literal", "aliases", "priority", "style"], "properties": {"product_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "literal": {"type": "string", "minLength": 1}, "aliases": {"type": "array", "items": {"type": "string", "minLength": 1}}, "priority": {"type": "integer"}, "style": {"$ref": "#/$defs/style"}}}}},
+  "$defs": {"style": {"type": "object", "additionalProperties": false, "minProperties": 1, "properties": {"fill": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}, "stroke": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}, "size": {"type": "number"}, "bold": {"type": "boolean"}}}}
+}

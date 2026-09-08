@@ -1,0 +1,25 @@
+{
+  // 配置目录版本。升级配置目录格式时才修改。
+  "schema_version": 1,
+  "kind": "preprocess_config_catalog",
+
+  // 新建 Job 时未特别指定的推荐配置集；Job 仍应显式写 config_set。
+  "default_config_set": "taobao-flash-v1",
+
+  // 每个业务项目登记一项。新增项目时复制现有 config.jsonc，再在此追加登记。
+  "config_sets": [
+    {
+      // 稳定 ID：只使用小写字母、数字和短横线；已投入使用后不要改名。
+      "config_set_id": "taobao-flash-v1",
+      "display_name": "淘宝闪购-首版",
+      "description": "由剪映参考工程 1/2/3 差异确认的首个配置集",
+      "tags": ["淘宝闪购", "餐饮", "竖屏", "720x1280"],
+
+      // 路径必须相对 configs/，且不能使用 .. 或符号链接逃逸目录。
+      "path": "taobao-flash-v1/config.jsonc",
+
+      // false 时仍可列出，但不能用于 plan/apply，适合暂时下线旧项目。
+      "enabled": true
+    }
+  ]
+}

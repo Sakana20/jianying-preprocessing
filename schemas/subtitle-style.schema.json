@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "kind", "canvas", "font", "size", "fill", "stroke", "stroke_width", "layout_ui"],
+  "properties": {
+    "schema_version": {"const": 1}, "kind": {"const": "subtitle_style"},
+    "canvas": {"type": "object", "additionalProperties": false, "required": ["width", "height", "policy"], "properties": {"width": {"const": 720}, "height": {"const": 1280}, "policy": {"const": "require_exact"}}},
+    "font": {"type": "object", "additionalProperties": false, "required": ["resource_id", "title", "filename_hint"], "properties": {"resource_id": {"type": "string", "minLength": 1}, "title": {"type": "string", "minLength": 1}, "filename_hint": {"type": "string", "minLength": 1}}},
+    "size": {"type": "number", "exclusiveMinimum": 0}, "fill": {"$ref": "#/$defs/color"}, "stroke": {"$ref": "#/$defs/color"}, "stroke_width": {"type": "number", "minimum": 0, "maximum": 1},
+    "layout_ui": {"type": "object", "additionalProperties": false, "required": ["position", "scale_percent", "line_spacing"], "properties": {"position": {"type": "object", "additionalProperties": false, "required": ["x", "y", "unit"], "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "unit": {"const": "canvas_pixel"}}}, "scale_percent": {"type": "number", "exclusiveMinimum": 0}, "line_spacing": {"const": 5}}}
+  },
+  "$defs": {"color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}}
+}

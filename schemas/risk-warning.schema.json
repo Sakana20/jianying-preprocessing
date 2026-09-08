@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "kind", "asset", "placement"],
+  "properties": {"schema_version": {"const": 1}, "kind": {"const": "risk_warning"}, "asset": {"$ref": "#/$defs/asset"}, "placement": {"type": "object", "additionalProperties": false, "required": ["start_us", "duration", "layer"], "properties": {"start_us": {"const": 0}, "duration": {"const": "draft"}, "layer": {"const": "above_subtitles"}}}},
+  "$defs": {"asset": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "width", "height", "require_alpha"], "properties": {"path": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}, "require_alpha": {"const": true}}}}
+}

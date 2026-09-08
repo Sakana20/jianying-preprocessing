@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "kind", "asset", "duration_us", "placement", "segment_selector", "collision_policy", "last_segment_policy", "risk_overlay_coverage"],
+  "properties": {"schema_version": {"const": 1}, "kind": {"const": "end_frame"}, "asset": {"$ref": "#/$defs/asset"}, "duration_us": {"const": 3000000}, "placement": {"const": "after_each_video_segment"}, "segment_selector": {"type": "object", "additionalProperties": false, "required": ["track_type", "track_name", "material_type"], "properties": {"track_type": {"const": "video"}, "track_name": {"type": "string", "minLength": 1}, "material_type": {"const": "video"}}}, "collision_policy": {"const": "require_gap"}, "last_segment_policy": {"const": "extend_draft"}, "risk_overlay_coverage": {"const": "final_draft"}},
+  "$defs": {"asset": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "width", "height"], "properties": {"path": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}}}
+}

@@ -1,0 +1,5 @@
+interface:
+  display_name: "JianYing Preprocessing"
+  short_description: "Validate and preprocess existing JianYing drafts"
+  default_prompt: "Inspect this JianYing draft, produce a locked plan, and apply only after the target and configuration validate."
+

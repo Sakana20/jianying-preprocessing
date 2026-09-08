@@ -1,0 +1,165 @@
+{
+  // ==================== 配置集基本信息 ====================
+  "schema_version": 1,
+  "kind": "preprocess_config_set",
+
+  // 必须与 configs/catalog.jsonc 中登记的 config_set_id 完全一致。
+  "config_set_id": "taobao-flash-v1",
+  "display_name": "淘宝闪购-首版",
+
+  // draft 可检查但不能 apply；人工确认后改为 approved。
+  "approval": {
+    "status": "approved",
+    "source": "reference_draft_diff"
+  },
+
+  // v1 只允许写入剪映 5.9.0、Draft 360000、30fps 工程。
+  "draft_compatibility": {
+    "app_version": "5.9.0",
+    "draft_version": 360000,
+    "fps": 30
+  },
+
+  // ==================== 字幕基础效果 ====================
+  "subtitle_style": {
+    "schema_version": 1,
+    "kind": "subtitle_style",
+
+    // 当前策略要求工程画布完全一致，不会自动按比例换算。
+    "canvas": {"width": 720, "height": 1280, "policy": "require_exact"},
+
+    // resource_id 对应剪映字体资源；filename_hint 用于在本机缓存中唯一定位字体。
+    "font": {
+      "resource_id": "6740439840254333443",
+      "title": "特黑体",
+      "filename_hint": "特黑体-思源黑体1号.otf"
+    },
+
+    // 颜色必须使用 #RRGGBB。这里是所有字幕的默认样式。
+    "size": 5,
+    "fill": "#FFFFFF",
+    "stroke": "#000000",
+    "stroke_width": 0.08,
+
+    // 使用剪映界面容易理解的单位：位置为画布像素、缩放为百分比、行间距为界面值。
+    "layout_ui": {
+      "position": {"x": 0, "y": -500, "unit": "canvas_pixel"},
+      "scale_percent": 250,
+      "line_spacing": 5
+    }
+  },
+
+  // ==================== 产品名高亮 ====================
+  "product_names": {
+    "schema_version": 1,
+    "kind": "product_names",
+    "items": [
+      {
+        // product_id 是配置内部稳定引用；literal 为精确匹配文本，aliases 可添加明确别名。
+        "product_id": "taobao-flash",
+        "literal": "淘宝闪购",
+        "aliases": [],
+        "priority": 100,
+        "style": {"fill": "#FFDE00", "stroke": "#000000"}
+      }
+    ]
+  },
+
+  // ==================== 利益点高亮与换行 ====================
+  "benefit_points": {
+    "schema_version": 1,
+    "kind": "benefit_points",
+    "items": [
+      {
+        "benefit_id": "coupon-25-no-threshold",
+        "literal": "25元无门槛红包",
+        "priority": 80,
+        // 每个利益点可分别设置填充色、描边色，并可选 size、bold。
+        "style": {"fill": "#FFDE00", "stroke": "#000000"}
+      },
+      {
+        "benefit_id": "subsidy-card-90-percent",
+        "literal": "九折津贴卡",
+        "priority": 80,
+        "style": {"fill": "#FFFFFF", "stroke": "#FF1837"}
+      }
+    ],
+
+    // 只有 literal 完整命中时才替换；\n 表示换行。
+    "line_break_rules": [
+      {"literal": "，还可以叠加", "replacement": "\n还可以叠加"}
+    ]
+  },
+
+  // ==================== 利益点图片 ====================
+  // 整个字段改成 null 即关闭。不要用空对象、空数组或字符串 "null"。
+  "benefit_images": {
+    "schema_version": 1,
+    "kind": "benefit_images",
+    "items": [
+      {
+        "benefit_image_id": "coupon-and-subsidy-card",
+
+        // 这里只引用上方 benefit_id，不要再次复制利益点文案。
+        "requires_benefit_ids": [
+          "coupon-25-no-threshold",
+          "subsidy-card-90-percent"
+        ],
+        "match_mode": "all_in_same_subtitle",
+
+        // 修改图片后必须同步更新 sha256、width、height；透明图片 require_alpha=true。
+        "asset": {
+          "path": "/Volumes/Elements SE/陈鼎琦/饿了么整理/素材/贴片/淘宝闪购9折津贴卡-25.png",
+          "sha256": "86a17217483e0bc60545e5377d49e740042e3ce98a685f0af1faac98ebbb4ca3",
+          "width": 720,
+          "height": 1280,
+          "require_alpha": true
+        },
+
+        // 图片显示时长跟随命中的字幕；每个业务视频分段必须恰好命中一次。
+        "timing": "matched_subtitle_timerange",
+        "cardinality": "one_per_business_video_segment",
+
+        // 图片位于业务视频上方、字幕下方。
+        "placement": {
+          "layer": "below_subtitles_above_business_video",
+          "scale_x": 0.8315874938849428,
+          "scale_y": 0.8315874938849428,
+          "transform_x": 0.0,
+          "transform_y": 0.22245762711864403,
+          "alpha": 1.0,
+          "rotation": 0.0
+        },
+
+        // 剪映“便利贴”入场动画，900000 微秒在 30fps 下为 27 帧。
+        "animation_in": {
+          "name": "便利贴",
+          "effect_id": "70486392",
+          "resource_id": "7379456870265655859",
+          "duration_us": 900000
+        }
+      }
+    ]
+  },
+
+  // ==================== 风险提示图 ====================
+  // 整个字段改成 null 即关闭；由本工具管理的旧风险图会在归属验证后删除。
+  "risk_warning": {
+    "schema_version": 1,
+    "kind": "risk_warning",
+    "asset": {
+      "path": "/Volumes/Elements SE/陈鼎琦/饿了么整理/风险提示语排版/淘宝闪购星广提示语.png",
+      "sha256": "88cef1bb4d34c4bbdd35048cfed01d40f2d4bf55bcd37c6967db25f3113745e4",
+      "width": 720,
+      "height": 1280,
+      "require_alpha": true
+    },
+    // 从第 0 微秒覆盖最终 Draft 全时长，并放在字幕上方。
+    "placement": {"start_us": 0, "duration": "draft", "layer": "above_subtitles"}
+  },
+
+  // ==================== 逐视频尾帧 ====================
+  // 当前项目不需要尾帧。启用时把 null 改为 end-frame.schema.json 对应的对象。
+  // 完整可复制示例见 references/config-and-job.md。
+  "end_frame": null
+}

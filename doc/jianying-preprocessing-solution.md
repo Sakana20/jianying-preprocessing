@@ -2,11 +2,19 @@
 
 ## 文档状态
 
-- 状态：方案已深化，已纳入 Draft 3 的利益点图片研究；尚未实现代码
+- 状态：v0.1 已开始实现；已固化配置校验、inspect/plan/apply/validate/rollback、字幕样式与高亮、利益点图片、风险提示及事务/幂等回归
 - 研究日期：2026-09-07
 - 需求修订：已纳入可切换配置集、跨类别强校验、可空利益点图片/风险提示/尾帧及逐视频分段尾帧接口
 - 首版目标版本：剪映专业版 5.9.0，`draft_info.json.version = 360000`
-- 研究方式：只读检查两个本地剪映工程、工程备份时间序列、媒体文件及现有 `jianying-editor` 能力
+- 研究方式：只读检查三个本地剪映工程、工程备份时间序列、媒体文件及现有 `jianying-editor` 能力
+
+### 当前实现边界（v0.1）
+
+- 已实现：Catalog 统一管理、单项目中文注释 `config.jsonc`、Catalog/Config Set/六类组件 closed JSON Schema、首个 approved 配置集、Job 防内联校验、只读 Draft 检查、锁定计划、字幕样式/换行/产品与利益点高亮、利益点图片、风险提示、状态归属、原子多文件写入、自动 rollback、显式 rollback、二次 plan no-op。
+- 已实现并由本机三个样本回归：1/2/3 的结构统计；工程1临时副本处理后得到5轨/138段、22个 video/photo material、11个 material animation，10次产品名和各10次利益点命中，随后可幂等复跑并完整回滚。
+- 已定义并实现规划代码、但首个配置集未启用：3秒逐分段尾帧、末段延长和最终风险层覆盖。
+- 尚未实现：media manifest/search root 重连、POSIX owner 权限修复、剪映原生 TCC 授权、staging clone/copy、剪映 UI 内视觉验收自动化。v0.1 对这些模式显式失败，不静默降级。
+- 原始参考工程 1/2/3 始终只读；自动写入测试仅针对临时副本。
 
 ## 目标
 
@@ -596,34 +604,33 @@ SHA-256：86a17217483e0bc60545e5377d49e740042e3ce98a685f0af1faac98ebbb4ca3
 
 因此首版尾帧接口把末段策略固定为 `extend_draft`，风险图覆盖策略固定为 `final_draft`。二者仍写入配置以便审计，但执行器不得自行选择其他行为。
 
-## 配置体系：带类型、可切换、不可内联
+## 配置体系：统一目录、单项目单文件、带类型、可切换、不可内联
 
 ### 设计目标
 
 配置体系需要同时满足：
 
 1. 业务内容可随时按 `config_set_id` 切换，执行代码不改动。
-2. 产品名、利益点、利益点图片、风险提示和尾帧各自使用独立、带类型的配置文件。
+2. 每个业务项目只维护一份带中文注释的 `config.jsonc`；字幕、产品名、利益点、利益点图片、风险提示和尾帧在文件内仍是独立带类型组件。
 3. Job 只选择已存在的配置集，不允许临时内联业务短语、图片路径或样式，避免生成式调用方把类别混用。
-4. 所有组件携带相同 `config_set_id`；跨目录引用、跨配置集拼接和未知字段一律拒绝。
+4. `configs/catalog.jsonc` 是配置集统一索引；项目 ID 只在配置集顶层声明一次，组件由所在槽位和 `kind` 双重判别，跨目录路径和未知字段一律拒绝。
 5. `benefit_images`、`risk_warning` 和 `end_frame` 的关闭方式只有显式 JSON `null`；字段缺失不是关闭，而是配置不完整。
 6. 先完整加载并校验配置，再读取并规划 Draft；配置错误时不得产生任何工程写入。
 
 需要明确：校验器无法仅凭语言学判断任意短语究竟是不是“产品名”。语义真值必须来自人工确认并纳入版本控制的类型化配置。防幻觉的关键是让 Codex 只能选择已批准配置集，不能在 Job 或运行时生成、改写、补全这些值；校验器负责阻断结构混用、跨集拼装、重复短语、资产错配和未批准配置。
 
-### 建议目录
+### 当前目录
 
 ```text
 configs/
-└── taobao-flash-v1/
-    ├── bundle.json
-    ├── subtitle-style.json
-    ├── product-names.json
-    ├── benefit-points.json
-    ├── benefit-images.json
-    └── risk-warning.json
+├── catalog.jsonc
+├── taobao-flash-v1/
+│   └── config.jsonc
+└── <another-config-set>/
+    └── config.jsonc
 schemas/
-├── bundle.schema.json
+├── catalog.schema.json
+├── config-set.schema.json
 ├── subtitle-style.schema.json
 ├── product-names.schema.json
 ├── benefit-points.schema.json
@@ -632,16 +639,17 @@ schemas/
 └── end-frame.schema.json
 ```
 
-第一个配置集没有 `end-frame.json`，因为 `bundle.json.end_frame` 为 `null`。后续产品需要尾帧时，在自己的配置集目录中增加 `end-frame.json` 并由 bundle 引用。文件名本身不是类型依据，实际类型必须由内容中的 `kind` 和对应 JSON Schema 双重确认。
+总目录记录配置集 ID、显示名、说明、标签、相对路径和启用状态。一个配置集被禁用时仍可列出和校验，但不能进入 plan/apply。配置路径必须位于 `configs/` 内，禁止绝对路径、`..` 和符号链接逃逸。
 
-### Bundle 契约
+### Config Set 契约
 
 当前参考样本作为首个配置集：
 
-```json
+```jsonc
 {
+  // 单个项目的全部可编辑配置集中在此文件。
   "schema_version": 1,
-  "kind": "preprocess_bundle",
+  "kind": "preprocess_config_set",
   "config_set_id": "taobao-flash-v1",
   "display_name": "淘宝闪购-首版",
   "approval": {
@@ -653,16 +661,16 @@ schemas/
     "draft_version": 360000,
     "fps": 30
   },
-  "subtitle_style": "subtitle-style.json",
-  "product_names": "product-names.json",
-  "benefit_points": "benefit-points.json",
-  "benefit_images": "benefit-images.json",
-  "risk_warning": "risk-warning.json",
+  "subtitle_style": {"kind": "subtitle_style", "...": "..."},
+  "product_names": {"kind": "product_names", "items": []},
+  "benefit_points": {"kind": "benefit_points", "items": [], "line_break_rules": []},
+  "benefit_images": {"kind": "benefit_images", "items": []},
+  "risk_warning": {"kind": "risk_warning", "...": "..."},
   "end_frame": null
 }
 ```
 
-Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六个组件槽位都必须出现：`subtitle_style`、`product_names` 和 `benefit_points` 必须是相对文件路径；`benefit_images`、`risk_warning` 与 `end_frame` 可为相对文件路径或 `null`。禁止绝对路径、`..`、符号链接逃逸和指向配置集目录外的文件。
+Config Set 使用 closed schema，即 `additionalProperties: false`。六个组件槽位都必须出现：`subtitle_style`、`product_names` 和 `benefit_points` 必须是对象；`benefit_images`、`risk_warning` 与 `end_frame` 可为对应类型对象或 `null`。`.jsonc` 仅增加注释能力，不允许尾随逗号；注释不会进入 Draft。Catalog、完整配置源文件及每个解析后组件分别参与 plan 哈希锁。
 
 `null` 的精确定义：
 
@@ -678,7 +686,6 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 {
   "schema_version": 1,
   "kind": "subtitle_style",
-  "config_set_id": "taobao-flash-v1",
   "canvas": {
     "width": 720,
     "height": 1280,
@@ -740,7 +747,6 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 {
   "schema_version": 1,
   "kind": "product_names",
-  "config_set_id": "taobao-flash-v1",
   "items": [
     {
       "product_id": "taobao-flash",
@@ -764,7 +770,6 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 {
   "schema_version": 1,
   "kind": "benefit_points",
-  "config_set_id": "taobao-flash-v1",
   "items": [
     {
       "benefit_id": "coupon-25-no-threshold",
@@ -802,7 +807,6 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 {
   "schema_version": 1,
   "kind": "benefit_images",
-  "config_set_id": "taobao-flash-v1",
   "items": [
     {
       "benefit_image_id": "coupon-and-subsidy-card",
@@ -840,9 +844,9 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 }
 ```
 
-利益点图片配置只引用 `benefit_id`，不允许再次出现利益点 literal。校验器必须确认每个 ID 在同一配置集的 `benefit-points.json` 中唯一存在；这样即使调用者混淆“图片上的文案”和“字幕触发词”，也不能绕过已批准的利益点真值。
+利益点图片配置只引用 `benefit_id`，不允许再次出现利益点 literal。校验器必须确认每个 ID 在同一 `config.jsonc` 的 `benefit_points.items` 中唯一存在；这样即使调用者混淆“图片上的文案”和“字幕触发词”，也不能绕过已批准的利益点真值。
 
-业务已确认 `benefit_images` 可以为 `null`。关闭功能必须在 bundle 中显式写 `null`；非空 `benefit-images.json` 的 `items` 必须至少有一项，不接受空列表作为第二种关闭方式，避免产生两套等价语义。
+业务已确认 `benefit_images` 可以为 `null`。关闭功能必须在 `config.jsonc` 中显式写 `null`；非空 `benefit_images.items` 必须至少有一项，不接受空列表作为第二种关闭方式，避免产生两套等价语义。
 
 ### 当前风险提示配置
 
@@ -850,7 +854,6 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 {
   "schema_version": 1,
   "kind": "risk_warning",
-  "config_set_id": "taobao-flash-v1",
   "asset": {
     "path": "/Volumes/Elements SE/陈鼎琦/饿了么整理/风险提示语排版/淘宝闪购星广提示语.png",
     "sha256": "88cef1bb4d34c4bbdd35048cfed01d40f2d4bf55bcd37c6967db25f3113745e4",
@@ -876,7 +879,6 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 {
   "schema_version": 1,
   "kind": "end_frame",
-  "config_set_id": "example-product-v1",
   "asset": {
     "path": "/absolute/path/to/end-frame.png",
     "sha256": "<64位小写十六进制SHA-256>",
@@ -962,9 +964,9 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 `validate-config` 必须在 Draft 写操作之前完成以下层级：
 
 1. **语法和 Schema**：JSON 可解析、schema version 支持、closed schema、必填字段齐全、类型正确。
-2. **类型判别**：Bundle 各槽位引用文件的 `kind` 必须分别精确等于 `subtitle_style`、`product_names`、`benefit_points`、`benefit_images`、`risk_warning`、`end_frame`。
-3. **配置集一致性**：所有非空组件的 `config_set_id` 必须与 bundle 相同，路径必须受限于同一配置集目录。
-4. **批准状态**：只允许 `approval.status=approved` 的 bundle 进入 apply；草稿配置可以 inspect/validate，但不能写 Draft。
+2. **类型判别**：Config 各槽位的 `kind` 必须分别精确等于 `subtitle_style`、`product_names`、`benefit_points`、`benefit_images`、`risk_warning`、`end_frame`。
+3. **配置集一致性**：顶层 `config_set_id`、`display_name` 必须与 Catalog 条目一致，配置路径必须受限于配置根目录。
+4. **批准状态**：只允许 `approval.status=approved` 的 Config Set 进入 apply；草稿配置可以 inspect/validate，但不能写 Draft。
 5. **类别互斥**：产品名与利益点的标准化 literal/alias 不得完全相同；如未来确有重叠需求，必须新增显式且可审计的例外机制，首版不接受。
 6. **字段隔离**：产品名/利益点配置禁止出现资产字段；利益点图片允许资产和 `benefit_id` 引用但禁止 literal；风险/尾帧配置禁止出现短语、高亮和换行字段；未知字段直接失败。
 7. **跨文件引用**：利益点图片的每个 `requires_benefit_ids` 必须在同一配置集的利益点文件中唯一存在，不允许悬空 ID、重复 ID 或引用产品 ID。
@@ -978,10 +980,10 @@ Bundle 字段应使用 closed schema，即 `additionalProperties: false`。六�
 以下情况均必须在修改 Draft 前失败：
 
 - Job 内出现 `product_terms`、`benefit_rules`、`benefit_image_png`、`risk_png` 或 `end_frame_png` 等内联业务字段。
-- `bundle.product_names` 指向一个 `kind=benefit_points` 的文件。
-- `bundle.benefit_images` 指向风险提示或尾帧配置。
+- `config.product_names` 被错误填成一个 `kind=benefit_points` 的对象。
+- `config.benefit_images` 被错误填成风险提示或尾帧对象。
 - 利益点图片直接重复 literal，或引用了不存在的 `benefit_id`。
-- 产品配置来自 `taobao-flash-v1`，风险图却来自另一个 `config_set_id`。
+- Catalog 条目指向另一个配置集目录，或其 ID、显示名与 Config Set 顶层不一致。
 - 同一 literal 同时出现在产品名和利益点中。
 - 利益点图片、风险图或尾帧路径填错，导致本应不同的资产 hash 相同。
 - 配置缺字段时由 Codex“根据文件名补全”。
@@ -1049,15 +1051,12 @@ jianying-preprocessing/
 │           ├── benefit_images.py
 │           └── end_frame.py
 ├── configs/
+│   ├── catalog.jsonc
 │   └── taobao-flash-v1/
-│       ├── bundle.json
-│       ├── subtitle-style.json
-│       ├── product-names.json
-│       ├── benefit-points.json
-│       ├── benefit-images.json
-│       └── risk-warning.json
+│       └── config.jsonc
 ├── schemas/
-│   ├── bundle.schema.json
+│   ├── catalog.schema.json
+│   ├── config-set.schema.json
 │   ├── subtitle-style.schema.json
 │   ├── product-names.schema.json
 │   ├── benefit-points.schema.json
@@ -1257,9 +1256,9 @@ Job schema 应显式拒绝旧式内联字段。想切换产品时只改 `config_
 
 ### 配置
 
-- Bundle 和全部非空组件通过各自 closed schema。
-- `kind` 与 bundle 槽位匹配，`config_set_id` 全部一致。
-- Bundle 为 approved；配置路径未逃逸目录。
+- Catalog、Config Set 和全部非空组件通过各自 closed schema。
+- 顶层 `config_set_id` 与 Catalog 一致，组件 `kind` 与配置槽位匹配。
+- Config Set 为 approved；配置路径未逃逸配置根目录。
 - Job 不包含任何业务内容覆盖字段。
 - 产品名、利益点无跨类别重复或未声明重叠。
 - 利益点图片仅引用同配置集内存在的 `benefit_id`，不重复存储 literal。
@@ -1340,7 +1339,7 @@ Job schema 应显式拒绝旧式内联字段。想切换产品时只改 `config_
 
 建议按以下顺序开发：
 
-1. 固化七份 JSON Schema 和 `validate-config`，先用错误 fixture 验证跨类别混用及悬空 benefit ID 会失败。
+1. 固化 Catalog、Config Set 与六类组件 JSON Schema 和 `validate-config`，先用错误 fixture 验证跨类别混用及悬空 benefit ID 会失败。
 2. 将当前参考差异整理为首个 `taobao-flash-v1` 配置集，并人工批准。
 3. `inspect`：实现完全只读的版本、引用、媒体、字幕及业务视频分段检查。
 4. `plan`：实现确定性媒体解析、配置 hash 锁、高亮匹配及变更白名单。
