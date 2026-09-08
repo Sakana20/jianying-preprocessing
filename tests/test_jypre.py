@@ -38,9 +38,18 @@ class JypreTests(unittest.TestCase):
         self.assertTrue(config.config_path.name.endswith(".jsonc"))
         catalog = list_config_sets(ROOT / "configs")
         self.assertEqual(catalog["default_config_set"], "taobao-flash-v1")
-        self.assertEqual(len(catalog["config_sets"]), 1)
+        self.assertEqual(
+            {item["config_set_id"] for item in catalog["config_sets"]},
+            {"taobao-flash-v1", "taobaoshangou-normal"},
+        )
         source = config.config_path.read_text(encoding="utf-8")
         self.assertIn("// ==================== 利益点高亮与换行", source)
+
+        normal = load_config(ROOT / "configs", "taobaoshangou-normal", require_approved=True)
+        self.assertEqual(normal.data["display_name"], "淘宝闪购-常规")
+        self.assertIsNone(normal.components["benefit_images"])
+        self.assertIsNotNone(normal.components["risk_warning"])
+        self.assertIsNotNone(normal.components["end_frame"])
 
     def test_jsonc_parser_preserves_comment_markers_inside_strings(self) -> None:
         source = '{/* 中文块注释 */"url":"https://example.com/a//b","value":1// 行注释\n}'

@@ -1,0 +1,120 @@
+{
+  // ==================== 配置集基本信息 ====================
+  "schema_version": 1,
+  "kind": "preprocess_config_set",
+
+  // 必须与 configs/catalog.jsonc 中登记的 config_set_id 完全一致。
+  "config_set_id": "taobaoshangou-normal",
+  "display_name": "淘宝闪购-常规",
+
+  // 已根据用户明确给出的配置要求完成校验，可用于 plan/apply。
+  "approval": {
+    "status": "approved",
+    "source": "user_specification"
+  },
+
+  // 当前执行器只允许写入剪映 5.9.0、Draft 360000、30fps 工程。
+  "draft_compatibility": {
+    "app_version": "5.9.0",
+    "draft_version": 360000,
+    "fps": 30
+  },
+
+  // ==================== 字幕基础效果 ====================
+  // 未特别说明，完整继承“淘宝闪购-星广”。
+  "subtitle_style": {
+    "schema_version": 1,
+    "kind": "subtitle_style",
+    "canvas": {"width": 720, "height": 1280, "policy": "require_exact"},
+    "font": {
+      "resource_id": "6740439840254333443",
+      "title": "特黑体",
+      "filename_hint": "特黑体-思源黑体1号.otf"
+    },
+    "size": 5,
+    "fill": "#FFFFFF",
+    "stroke": "#000000",
+    "stroke_width": 0.08,
+    "layout_ui": {
+      "position": {"x": 0, "y": -500, "unit": "canvas_pixel"},
+      "scale_percent": 250,
+      "line_spacing": 5
+    }
+  },
+
+  // ==================== 产品名高亮 ====================
+  // “淘宝闪购”按产品名处理，避免与利益点类别重复。
+  "product_names": {
+    "schema_version": 1,
+    "kind": "product_names",
+    "items": [
+      {
+        "product_id": "taobao-flash",
+        "literal": "淘宝闪购",
+        "aliases": [],
+        "priority": 100,
+        "style": {"fill": "#FFDE00", "stroke": "#000000"}
+      }
+    ]
+  },
+
+  // ==================== 利益点高亮与换行 ====================
+  "benefit_points": {
+    "schema_version": 1,
+    "kind": "benefit_points",
+    "items": [
+      {
+        "benefit_id": "coupon-25-no-threshold",
+        "literal": "25元无门槛红包",
+        "priority": 80,
+        // 白字红边。
+        "style": {"fill": "#FFFFFF", "stroke": "#FF1837"}
+      }
+    ],
+
+    // 空数组表示不执行任何换行替换。
+    "line_break_rules": []
+  },
+
+  // ==================== 利益点图片 ====================
+  // 当前配置明确关闭利益点图片。
+  "benefit_images": null,
+
+  // ==================== 风险提示图 ====================
+  "risk_warning": {
+    "schema_version": 1,
+    "kind": "risk_warning",
+    "asset": {
+      "path": "/Volumes/Elements SE/陈鼎琦/饿了么整理/风险提示语排版/淘宝闪购合规提示语.png",
+      "sha256": "af212071f5d1e6c8c2df3e3e461095ebf816a72b09a378145c586288d1aab3cf",
+      "width": 720,
+      "height": 1280,
+      "require_alpha": true
+    },
+    // 从第 0 微秒覆盖最终 Draft 全时长，并放在字幕上方。
+    "placement": {"start_us": 0, "duration": "draft", "layer": "above_subtitles"}
+  },
+
+  // ==================== 逐视频尾帧 ====================
+  "end_frame": {
+    "schema_version": 1,
+    "kind": "end_frame",
+    "asset": {
+      "path": "/Volumes/Elements SE/陈鼎琦/常用素材/闪购合规活动细则.png",
+      "sha256": "034f245cd73b725614c0653743f73aecad2af71577870d375d101d5edb197fe1",
+      "width": 720,
+      "height": 1280
+    },
+    // 每个“视频素材”片段后插入 3 秒尾帧。
+    "duration_us": 3000000,
+    "placement": "after_each_video_segment",
+    "segment_selector": {
+      "track_type": "video",
+      "track_name": "视频素材",
+      "material_type": "video"
+    },
+    "collision_policy": "require_gap",
+    "last_segment_policy": "extend_draft",
+    "risk_overlay_coverage": "final_draft"
+  }
+}

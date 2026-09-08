@@ -20,6 +20,15 @@
 
       // false 时仍可列出，但不能用于 plan/apply，适合暂时下线旧项目。
       "enabled": true
+    },
+    {
+      // 淘宝闪购常规配置：无利益点贴片，启用合规提示和逐视频尾帧。
+      "config_set_id": "taobaoshangou-normal",
+      "display_name": "淘宝闪购-常规",
+      "description": "常规投放配置：淘宝闪购黄字黑边、25元红包白字红边、合规风险图及活动细则尾帧",
+      "tags": ["淘宝闪购", "常规", "合规", "竖屏", "720x1280"],
+      "path": "taobaoshangou-normal/config.jsonc",
+      "enabled": true
     }
   ]
 }
