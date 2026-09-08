@@ -651,7 +651,7 @@ schemas/
   "schema_version": 1,
   "kind": "preprocess_config_set",
   "config_set_id": "taobao-flash-v1",
-  "display_name": "淘宝闪购-首版",
+  "display_name": "淘宝闪购-星广",
   "approval": {
     "status": "approved",
     "source": "reference_draft_diff"

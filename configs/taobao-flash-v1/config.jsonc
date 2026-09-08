@@ -5,7 +5,7 @@
 
   // 必须与 configs/catalog.jsonc 中登记的 config_set_id 完全一致。
   "config_set_id": "taobao-flash-v1",
-  "display_name": "淘宝闪购-首版",
+  "display_name": "淘宝闪购-星广",
 
   // draft 可检查但不能 apply；人工确认后改为 approved。
   "approval": {
