@@ -56,12 +56,16 @@ def _jianying_running() -> bool:
     if sys.platform != "darwin":
         return False
     result = subprocess.run(
-        ["pgrep", "-f", r"com\.lemon\.lvpro|/剪映专业版(?:-|\.app|$)"],
+        ["pgrep", "-f", r"com\.lemon\.lvpro|VideoFusion-macOS|/剪映专业版(?:-|\.app|$)"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,
     )
-    return result.returncode == 0
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
+        return False
+    raise ApplyError("cannot determine whether JianYing is running; refusing to write the Draft")
 
 
 def apply_plan(job_path: Path, plan_path: Path) -> dict[str, Any]:

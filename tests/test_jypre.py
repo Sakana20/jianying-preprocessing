@@ -5,12 +5,13 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from jypre.config import ConfigError, list_config_sets, load_config
 from jypre.draft import inspect_draft, load_draft
-from jypre.errors import DraftError
+from jypre.errors import ApplyError, DraftError
 from jypre.planner import build_plan
-from jypre.transaction import apply_plan, rollback
+from jypre.transaction import _jianying_running, apply_plan, rollback
 from jypre.util import canonical_json_bytes, read_jsonc, sha256_file, strip_jsonc_comments
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +55,14 @@ class JypreTests(unittest.TestCase):
     def test_jsonc_parser_preserves_comment_markers_inside_strings(self) -> None:
         source = '{/* 中文块注释 */"url":"https://example.com/a//b","value":1// 行注释\n}'
         self.assertEqual(json.loads(strip_jsonc_comments(source)), {"url": "https://example.com/a//b", "value": 1})
+
+    @patch("jypre.transaction.subprocess.run")
+    def test_jianying_process_probe_is_fail_closed(self, run) -> None:
+        run.return_value.returncode = 3
+        with self.assertRaisesRegex(ApplyError, "cannot determine whether JianYing is running"):
+            _jianying_running()
+        pattern = run.call_args.args[0][2]
+        self.assertIn("VideoFusion-macOS", pattern)
 
     @unittest.skipUnless(_local_samples_available(), "local JianYing reference drafts unavailable")
     def test_plan_reproduces_reference_counts_and_hits(self) -> None:
@@ -155,7 +164,8 @@ class JypreTests(unittest.TestCase):
             self.assertTrue(all(item["duration_us"] == 3_000_000 for item in build.plan["end_frames"]))
 
     @unittest.skipUnless(_local_samples_available(), "local JianYing reference drafts unavailable")
-    def test_apply_is_idempotent_and_rollback_restores(self) -> None:
+    @patch("jypre.transaction._jianying_running", return_value=False)
+    def test_apply_is_idempotent_and_rollback_restores(self, _process_probe) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             tmp_path = Path(temporary)
             draft = tmp_path / "draft"

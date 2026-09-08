@@ -7,16 +7,17 @@ metadata:
 
 # JianYing Preprocessing
 
-Use the repository CLI; do not hand-edit Draft JSON.
+Use the packaged CLI; do not hand-edit Draft JSON. Resolve `<SKILL_ROOT>` as the directory containing this
+`SKILL.md`, regardless of the current working directory.
 
 ```bash
-python3 scripts/preprocess_draft.py list-configs --config-root configs
-python3 scripts/preprocess_draft.py validate-config --config-root configs --config-set taobao-flash-v1
-python3 scripts/preprocess_draft.py inspect --draft /absolute/path/to/draft
-python3 scripts/preprocess_draft.py plan --job /absolute/path/to/job.json --output /absolute/path/to/plan.json
-python3 scripts/preprocess_draft.py apply --job /absolute/path/to/job.json --plan /absolute/path/to/plan.json
-python3 scripts/preprocess_draft.py validate --draft /absolute/path/to/draft --job /absolute/path/to/job.json
-python3 scripts/preprocess_draft.py rollback --draft /absolute/path/to/draft --run-id RUN_ID
+python3 <SKILL_ROOT>/scripts/preprocess_draft.py list-configs --config-root <SKILL_ROOT>/configs
+python3 <SKILL_ROOT>/scripts/preprocess_draft.py validate-config --config-root <SKILL_ROOT>/configs --config-set taobao-flash-v1
+python3 <SKILL_ROOT>/scripts/preprocess_draft.py inspect --draft /absolute/path/to/draft
+python3 <SKILL_ROOT>/scripts/preprocess_draft.py plan --job /absolute/path/to/job.json --output /absolute/path/to/plan.json
+python3 <SKILL_ROOT>/scripts/preprocess_draft.py apply --job /absolute/path/to/job.json --plan /absolute/path/to/plan.json
+python3 <SKILL_ROOT>/scripts/preprocess_draft.py validate --draft /absolute/path/to/draft --job /absolute/path/to/job.json
+python3 <SKILL_ROOT>/scripts/preprocess_draft.py rollback --draft /absolute/path/to/draft --run-id RUN_ID
 ```
 
 ## Required workflow
@@ -24,6 +25,7 @@ python3 scripts/preprocess_draft.py rollback --draft /absolute/path/to/draft --r
 - Treat source drafts as read-only unless the user has explicitly selected them as mutation targets. Prefer a clone supplied by the upstream workflow.
 - Run `validate-config`, `inspect`, and `plan` before `apply`.
 - `apply` requires a saved plan whose Draft and component hashes still match; it creates an atomic backup under `.jypre/backups/`.
+- Close JianYing before `apply`. The CLI must refuse to write when JianYing is running or when its process state cannot be determined.
 - Never infer product names, benefits, image roles, or configuration values from filenames or natural language. A job selects one approved config set and contains no business-content overrides.
 - Manage config sets through `configs/catalog.jsonc`; each project keeps all editable settings in one commented `config.jsonc`.
 - Never bypass macOS TCC, rewrite its database, recursively change permissions, or delete an unmanaged lookalike layer.
