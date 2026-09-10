@@ -29,6 +29,15 @@
       "tags": ["淘宝闪购", "常规", "合规", "竖屏", "720x1280"],
       "path": "taobaoshangou-normal/config.jsonc",
       "enabled": true
+    },
+    {
+      // 常规侧合规配置：继承常规配置，仅将红色高亮文案改为“大额红包”。
+      "config_set_id": "taobaoshangou-normal-side-compliance",
+      "display_name": "淘宝闪购-常规侧合规",
+      "description": "常规侧合规投放配置：淘宝闪购黄字黑边、大额红包白字红边、合规风险图及活动细则尾帧",
+      "tags": ["淘宝闪购", "常规侧合规", "合规", "竖屏", "720x1280"],
+      "path": "taobaoshangou-normal-side-compliance/config.jsonc",
+      "enabled": true
     }
   ]
 }

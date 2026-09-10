@@ -41,7 +41,7 @@ class JypreTests(unittest.TestCase):
         self.assertEqual(catalog["default_config_set"], "taobao-flash-v1")
         self.assertEqual(
             {item["config_set_id"] for item in catalog["config_sets"]},
-            {"taobao-flash-v1", "taobaoshangou-normal"},
+            {"taobao-flash-v1", "taobaoshangou-normal", "taobaoshangou-normal-side-compliance"},
         )
         source = config.config_path.read_text(encoding="utf-8")
         self.assertIn("// ==================== 利益点高亮与换行", source)
@@ -51,6 +51,16 @@ class JypreTests(unittest.TestCase):
         self.assertIsNone(normal.components["benefit_images"])
         self.assertIsNotNone(normal.components["risk_warning"])
         self.assertIsNotNone(normal.components["end_frame"])
+
+        side_compliance = load_config(
+            ROOT / "configs", "taobaoshangou-normal-side-compliance", require_approved=True
+        )
+        self.assertEqual(side_compliance.data["display_name"], "淘宝闪购-常规侧合规")
+        self.assertEqual(side_compliance.components["benefit_points"]["items"][0]["literal"], "大额红包")
+        self.assertEqual(
+            side_compliance.components["benefit_points"]["items"][0]["style"],
+            normal.components["benefit_points"]["items"][0]["style"],
+        )
 
     def test_jsonc_parser_preserves_comment_markers_inside_strings(self) -> None:
         source = '{/* 中文块注释 */"url":"https://example.com/a//b","value":1// 行注释\n}'
