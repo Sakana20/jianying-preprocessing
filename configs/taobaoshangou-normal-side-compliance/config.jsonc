@@ -90,8 +90,8 @@
     "schema_version": 1,
     "kind": "risk_warning",
     "asset": {
-      "path": "/Volumes/Elements SE/陈鼎琦/饿了么整理/风险提示语排版/淘宝闪购常规提示语.png",
-      "sha256": "045402de6976a4e45c54bfac67de94847cf87a4b1117840f904dd164b8d77a48",
+      "path": "/Volumes/Elements SE/陈鼎琦/饿了么整理/风险提示语排版/淘宝闪购合规提示语.png",
+      "sha256": "af212071f5d1e6c8c2df3e3e461095ebf816a72b09a378145c586288d1aab3cf",
       "width": 720,
       "height": 1280,
       "require_alpha": true
