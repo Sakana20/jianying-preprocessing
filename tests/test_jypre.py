@@ -37,6 +37,7 @@ class JypreTests(unittest.TestCase):
         self.assertEqual(config.config_set_id, "taobao-flash-v1")
         self.assertIsNone(config.components["end_frame"])
         self.assertTrue(config.config_path.name.endswith(".jsonc"))
+        self.assertFalse(config.data["asset_validation"]["verify_sha256"])
         catalog = list_config_sets(ROOT / "configs")
         self.assertEqual(catalog["default_config_set"], "taobao-flash-v1")
         self.assertEqual(
@@ -61,6 +62,23 @@ class JypreTests(unittest.TestCase):
             side_compliance.components["benefit_points"]["items"][0]["style"],
             normal.components["benefit_points"]["items"][0]["style"],
         )
+
+    def test_asset_hash_validation_can_be_enabled_or_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config_root = Path(temporary) / "configs"
+            shutil.copytree(ROOT / "configs", config_root)
+            config_path = config_root / "taobao-flash-v1/config.jsonc"
+            config = read_jsonc(config_path)
+            config["risk_warning"]["asset"]["sha256"] = "0" * 64
+            config_path.write_bytes(canonical_json_bytes(config))
+
+            loaded = load_config(config_root, "taobao-flash-v1")
+            self.assertFalse(loaded.data["asset_validation"]["verify_sha256"])
+
+            config["asset_validation"]["verify_sha256"] = True
+            config_path.write_bytes(canonical_json_bytes(config))
+            with self.assertRaisesRegex(ConfigError, "risk_warning.asset.sha256"):
+                load_config(config_root, "taobao-flash-v1")
 
     def test_jsonc_parser_preserves_comment_markers_inside_strings(self) -> None:
         source = '{/* 中文块注释 */"url":"https://example.com/a//b","value":1// 行注释\n}'
@@ -107,6 +125,9 @@ class JypreTests(unittest.TestCase):
             {"coupon-25-no-threshold": 10, "subsidy-card-90-percent": 10},
         )
         self.assertEqual(len(build.plan["benefit_images"]), 10)
+        benefit_state = build.desired.state["features"]["benefit_images"][0]
+        self.assertFalse(benefit_state["verify_asset_sha256"])
+        self.assertEqual(benefit_state["asset_filename"], "淘宝闪购9折津贴卡-25.png")
 
     @unittest.skipUnless(_local_samples_available(), "local JianYing reference drafts unavailable")
     def test_manual_reference_layers_are_not_adopted(self) -> None:

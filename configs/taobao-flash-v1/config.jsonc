@@ -20,6 +20,11 @@
     "fps": 30
   },
 
+  // false 时按文件名识别图片；true 时额外校验 SHA-256 内容指纹。
+  "asset_validation": {
+    "verify_sha256": false
+  },
+
   // ==================== 字幕基础效果 ====================
   "subtitle_style": {
     "schema_version": 1,
@@ -107,7 +112,7 @@
         ],
         "match_mode": "all_in_same_subtitle",
 
-        // 修改图片后必须同步更新 sha256、width、height；透明图片 require_alpha=true。
+        // 修改图片后同步更新 width、height；开启哈希校验时还需更新 sha256。
         "asset": {
           "path": "/Volumes/Elements SE/陈鼎琦/饿了么整理/素材/贴片/淘宝闪购9折津贴卡-25.png",
           "sha256": "86a17217483e0bc60545e5377d49e740042e3ce98a685f0af1faac98ebbb4ca3",

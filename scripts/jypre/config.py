@@ -77,7 +77,14 @@ def _style(value: Any, context: str, errors: list[str]) -> None:
         errors.append(f"{context}.bold: expected boolean")
 
 
-def _asset(value: Any, context: str, errors: list[str], *, alpha_field: bool) -> None:
+def _asset(
+    value: Any,
+    context: str,
+    errors: list[str],
+    *,
+    alpha_field: bool,
+    verify_sha256: bool,
+) -> None:
     fields = {"path", "sha256", "width", "height"} | ({"require_alpha"} if alpha_field else set())
     if not _closed(value, fields, context, errors):
         return
@@ -98,9 +105,10 @@ def _asset(value: Any, context: str, errors: list[str], *, alpha_field: bool) ->
         errors.append(f"{context}.path: file does not exist: {path}")
         return
     try:
-        actual_hash = sha256_file(path)
-        if actual_hash != value.get("sha256"):
-            errors.append(f"{context}.sha256: expected {value.get('sha256')}, got {actual_hash}")
+        if verify_sha256:
+            actual_hash = sha256_file(path)
+            if actual_hash != value.get("sha256"):
+                errors.append(f"{context}.sha256: expected {value.get('sha256')}, got {actual_hash}")
         width, height, has_alpha = png_info(path)
         if (width, height) != (value.get("width"), value.get("height")):
             errors.append(
@@ -113,7 +121,9 @@ def _asset(value: Any, context: str, errors: list[str], *, alpha_field: bool) ->
         errors.append(f"{context}: cannot validate asset: {exc}")
 
 
-def _validate_component(slot: str, value: dict[str, Any], errors: list[str]) -> None:
+def _validate_component(
+    slot: str, value: dict[str, Any], errors: list[str], *, verify_asset_sha256: bool
+) -> None:
     common = {"schema_version", "kind"}
     if value.get("schema_version") != 1:
         errors.append(f"{slot}.schema_version: only version 1 is supported")
@@ -222,7 +232,13 @@ def _validate_component(slot: str, value: dict[str, Any], errors: list[str]) -> 
                     errors.append(f"{context}.timing: unsupported value")
                 if item.get("cardinality") != "one_per_business_video_segment":
                     errors.append(f"{context}.cardinality: unsupported value")
-                _asset(item.get("asset"), f"{context}.asset", errors, alpha_field=True)
+                _asset(
+                    item.get("asset"),
+                    f"{context}.asset",
+                    errors,
+                    alpha_field=True,
+                    verify_sha256=verify_asset_sha256,
+                )
                 placement = item.get("placement")
                 pfields = {"layer", "scale_x", "scale_y", "transform_x", "transform_y", "alpha", "rotation"}
                 if _closed(placement, pfields, f"{context}.placement", errors):
@@ -241,7 +257,13 @@ def _validate_component(slot: str, value: dict[str, Any], errors: list[str]) -> 
                     errors.append(f"{context}.animation_in.duration_us: v1 requires 900000")
     elif slot == "risk_warning":
         _closed(value, common | {"asset", "placement"}, slot, errors)
-        _asset(value.get("asset"), f"{slot}.asset", errors, alpha_field=True)
+        _asset(
+            value.get("asset"),
+            f"{slot}.asset",
+            errors,
+            alpha_field=True,
+            verify_sha256=verify_asset_sha256,
+        )
         placement = value.get("placement")
         if _closed(placement, {"start_us", "duration", "layer"}, f"{slot}.placement", errors):
             if placement != {"start_us": 0, "duration": "draft", "layer": "above_subtitles"}:
@@ -257,7 +279,13 @@ def _validate_component(slot: str, value: dict[str, Any], errors: list[str]) -> 
             "risk_overlay_coverage",
         }
         _closed(value, fields, slot, errors)
-        _asset(value.get("asset"), f"{slot}.asset", errors, alpha_field=False)
+        _asset(
+            value.get("asset"),
+            f"{slot}.asset",
+            errors,
+            alpha_field=False,
+            verify_sha256=verify_asset_sha256,
+        )
         if value.get("duration_us") != 3_000_000:
             errors.append(f"{slot}.duration_us: v1 requires 3000000")
         expected_values = {
@@ -381,6 +409,7 @@ def load_config(config_root: Path, config_set: str, *, require_approved: bool = 
         "display_name",
         "approval",
         "draft_compatibility",
+        "asset_validation",
         *COMPONENT_SLOTS.keys(),
     }
     _closed(config_data, config_fields, "config", errors)
@@ -400,6 +429,13 @@ def load_config(config_root: Path, config_set: str, *, require_approved: bool = 
             errors.append("config.approval.status: apply requires an approved configuration")
     compatibility = config_data.get("draft_compatibility")
     _closed(compatibility, {"app_version", "draft_version", "fps"}, "config.draft_compatibility", errors)
+    asset_validation = config_data.get("asset_validation")
+    verify_asset_sha256 = False
+    if _closed(asset_validation, {"verify_sha256"}, "config.asset_validation", errors):
+        if not isinstance(asset_validation.get("verify_sha256"), bool):
+            errors.append("config.asset_validation.verify_sha256: expected boolean")
+        else:
+            verify_asset_sha256 = asset_validation["verify_sha256"]
 
     components: dict[str, dict[str, Any] | None] = {}
     hashes: dict[str, str | None] = {
@@ -421,7 +457,7 @@ def load_config(config_root: Path, config_set: str, *, require_approved: bool = 
             continue
         if component.get("kind") != expected_kind:
             errors.append(f"{slot}.kind: expected {expected_kind!r}")
-        _validate_component(slot, component, errors)
+        _validate_component(slot, component, errors, verify_asset_sha256=verify_asset_sha256)
         components[slot] = component
         hashes[slot] = sha256_bytes(canonical_json_bytes(component))
 
@@ -464,7 +500,12 @@ def load_config(config_root: Path, config_set: str, *, require_approved: bool = 
         for right in range(left + 1, len(asset_slots)):
             lname, lasset = asset_slots[left]
             rname, rasset = asset_slots[right]
-            if lasset.get("path") == rasset.get("path") or lasset.get("sha256") == rasset.get("sha256"):
+            same_identity = (
+                lasset.get("sha256") == rasset.get("sha256")
+                if verify_asset_sha256
+                else Path(str(lasset.get("path", ""))).name == Path(str(rasset.get("path", ""))).name
+            )
+            if lasset.get("path") == rasset.get("path") or same_identity:
                 errors.append(f"asset identity conflict between {lname} and {rname}")
 
     if errors:
@@ -492,6 +533,7 @@ def config_report(config: LoadedConfig) -> dict[str, Any]:
         "config_file": str(config.config_path),
         "enabled": config.catalog_entry["enabled"],
         "approval": config.data["approval"]["status"],
+        "asset_validation": config.data["asset_validation"],
         "component_hashes": config.hashes,
         "resolved_counts": {
             "product_names": len(products["items"]) if products else 0,

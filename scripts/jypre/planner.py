@@ -170,7 +170,13 @@ def _unmanaged_asset_conflicts(
         if material.get("type") != "photo":
             continue
         for feature, path in configured:
-            if material.get("path") == path:
+            material_path = str(material.get("path", ""))
+            same_identity = (
+                material_path == path
+                if config.data["asset_validation"]["verify_sha256"]
+                else Path(material_path).name == Path(path).name
+            )
+            if same_identity:
                 conflicts.append({"feature": feature, "material_id": material.get("id"), "path": path})
     return conflicts
 
@@ -279,7 +285,11 @@ def build_plan(job_path: Path, *, require_approved: bool = True) -> PlanBuild:
         raise DraftError(f"unmanaged configured-asset layers already exist: {conflicts}")
 
     desired = base.clone()
-    remove_managed_features(desired.documents, desired.state)
+    remove_managed_features(
+        desired.documents,
+        desired.state,
+        verify_asset_sha256=config.data["asset_validation"]["verify_sha256"],
+    )
     info = desired.info
     subtitle_track = find_track(info, track_type="text", name=job["subtitle_track"]["name"])
     business_track = find_track(info, track_type="video", name="视频素材")
@@ -346,6 +356,7 @@ def build_plan(job_path: Path, *, require_approved: bool = True) -> PlanBuild:
                 rank="1",
                 render_index=2,
                 fps=int(info["fps"]),
+                verify_asset_sha256=config.data["asset_validation"]["verify_sha256"],
             )
             feature_tracks["benefit_images"].append(record["track_id"])
             features["benefit_images"].append(record)
@@ -374,6 +385,7 @@ def build_plan(job_path: Path, *, require_approved: bool = True) -> PlanBuild:
             rank="1",
             render_index=1,
             fps=int(info["fps"]),
+            verify_asset_sha256=config.data["asset_validation"]["verify_sha256"],
         )
         feature_tracks["end_frame"].append(record["track_id"])
         features["end_frame"].append(record)
@@ -400,6 +412,7 @@ def build_plan(job_path: Path, *, require_approved: bool = True) -> PlanBuild:
             rank="0",
             render_index=1,
             fps=int(info["fps"]),
+            verify_asset_sha256=config.data["asset_validation"]["verify_sha256"],
         )
         feature_tracks["risk_warning"].append(record["track_id"])
         features["risk_warning"] = record

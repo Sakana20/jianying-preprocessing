@@ -360,6 +360,7 @@ def add_photo_feature(
     rank: str,
     render_index: int,
     fps: int,
+    verify_asset_sha256: bool,
 ) -> dict[str, Any]:
     info = documents["draft_info.json"]
     track_id = unique_id("track", draft_id, feature, rule_id)
@@ -395,12 +396,16 @@ def add_photo_feature(
         "asset_record_id": asset_id,
         "asset_key": asset_key,
         "asset_sha256": asset["sha256"],
+        "asset_filename": Path(asset["path"]).name,
+        "verify_asset_sha256": verify_asset_sha256,
         "rule_id": rule_id,
         "items": items,
     }
 
 
-def remove_managed_features(documents: dict[str, Any], state: dict[str, Any] | None) -> None:
+def remove_managed_features(
+    documents: dict[str, Any], state: dict[str, Any] | None, *, verify_asset_sha256: bool
+) -> None:
     if not state:
         return
     info = documents["draft_info.json"]
@@ -449,8 +454,15 @@ def remove_managed_features(documents: dict[str, Any], state: dict[str, Any] | N
                 ) != set(item.get("helper_ids", [])):
                     raise DraftError(f"managed segment {item.get('segment_id')} identity no longer matches state")
                 asset_path = Path(resolved[1].get("path", ""))
-                if not asset_path.is_file() or record.get("asset_sha256") != sha256_file(asset_path):
-                    raise DraftError(f"managed asset for {track_id} is missing or its content changed")
+                if not asset_path.is_file():
+                    raise DraftError(f"managed asset for {track_id} is missing")
+                if verify_asset_sha256:
+                    if record.get("asset_sha256") != sha256_file(asset_path):
+                        raise DraftError(f"managed asset for {track_id} is missing or its content changed")
+                else:
+                    expected_filename = record.get("asset_filename") or resolved[1].get("material_name")
+                    if expected_filename != asset_path.name:
+                        raise DraftError(f"managed asset filename for {track_id} changed")
                 material_ids.add(item["photo_material_id"])
                 segment_ids.add(item["segment_id"])
                 helper_ids.update(item.get("helper_ids", []))

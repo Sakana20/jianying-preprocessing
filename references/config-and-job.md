@@ -24,6 +24,15 @@ configs/
 - 风险提示图；
 - 每段视频后的尾帧。
 
+图片身份校验由顶层配置控制：
+
+```jsonc
+"asset_validation": {
+  // false：仅按文件名识别；true：同时校验 SHA-256 内容指纹。
+  "verify_sha256": false
+}
+```
+
 `benefit_images`、`risk_warning`、`end_frame` 整项写为 JSON `null` 即关闭。字段缺失、`{}`、`[]` 或字符串 `"null"` 都不是关闭方式。
 
 ## 新增一个项目配置
@@ -39,7 +48,7 @@ python3 scripts/preprocess_draft.py list-configs --config-root configs
 python3 scripts/preprocess_draft.py validate-config --config-root configs --config-set my-product-v1
 ```
 
-修改图片后需要同步更新 SHA-256：
+开启 `verify_sha256` 后，修改图片需要同步更新 SHA-256：
 
 ```bash
 shasum -a 256 /absolute/path/to/image.png

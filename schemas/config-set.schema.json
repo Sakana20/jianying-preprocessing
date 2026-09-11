@@ -3,7 +3,7 @@
   "$id": "https://openai.local/jypre/config-set.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "kind", "config_set_id", "display_name", "approval", "draft_compatibility", "subtitle_style", "product_names", "benefit_points", "benefit_images", "risk_warning", "end_frame"],
+  "required": ["schema_version", "kind", "config_set_id", "display_name", "approval", "draft_compatibility", "asset_validation", "subtitle_style", "product_names", "benefit_points", "benefit_images", "risk_warning", "end_frame"],
   "properties": {
     "schema_version": {"const": 1},
     "kind": {"const": "preprocess_config_set"},
@@ -26,6 +26,14 @@
         "app_version": {"const": "5.9.0"},
         "draft_version": {"const": 360000},
         "fps": {"const": 30}
+      }
+    },
+    "asset_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verify_sha256"],
+      "properties": {
+        "verify_sha256": {"type": "boolean"}
       }
     },
     "subtitle_style": {"$ref": "subtitle-style.schema.json"},
