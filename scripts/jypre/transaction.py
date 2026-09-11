@@ -56,7 +56,7 @@ def _jianying_running() -> bool:
     if sys.platform != "darwin":
         return False
     result = subprocess.run(
-        ["pgrep", "-f", r"com\.lemon\.lvpro|VideoFusion-macOS|/剪映专业版(?:-|\.app|$)"],
+        ["pgrep", "-f", r"com[.]lemon[.]lvpro|VideoFusion-macOS|/剪映专业版"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,
